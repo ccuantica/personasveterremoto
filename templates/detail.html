@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle – {{ row.nombre_completo or 'Persona' }}{% endblock %}
+
+{% block content %}
+<section class="detail-card">
+    {% if (tipo == 'localizado' or tipo.startswith('reporta_') or tipo == 'lp_paciente') and row.posible_duplicado %}
+    <div class="alert">
+        ⚠️ Este registro de una fuente externa coincide probablemente con un paciente ya registrado en la lista local.
+        <a href="{{ url_for('paciente_detail', persona_id=row.paciente_id) }}">Ver paciente local</a>
+    </div>
+    {% endif %}
+
+    <h2>
+        {% if tipo == 'paciente' %}
+            <span class="badge badge-paciente">Paciente internado</span>
+        {% elif tipo == 'lp_paciente' %}
+            <span class="badge badge-paciente">Paciente (Localiza Pacientes)</span>
+        {% elif tipo == 'faltante' %}
+            <span class="badge badge-faltante">Persona faltante</span>
+        {% elif tipo == 'reporta_buscando' %}
+            <span class="badge badge-faltante">Buscando (Venezuela Reporta)</span>
+        {% elif tipo == 'reporta_localizado' %}
+            <span class="badge badge-localizado">{{ row.status|title }} (Venezuela Reporta)</span>
+        {% else %}
+            <span class="badge badge-localizado">Persona localizada</span>
+        {% endif %}
+        {{ row.nombre_completo or 'Sin nombre registrado' }}
+    </h2>
+
+    <div class="detail-grid">
+        {% if tipo == 'paciente' %}
+            <div><strong>Hospital / Centro:</strong> {{ row.hospital or '—' }}</div>
+            <div><strong>Apellido:</strong> {{ row.apellido or '—' }}</div>
+            <div><strong>Nombre:</strong> {{ row.nombre or '—' }}</div>
+            <div><strong>Cédula:</strong> {{ row.cedula or '—' }}</div>
+            <div><strong>Edad:</strong> {{ row.edad or '—' }}</div>
+            <div><strong>Estado:</strong> {{ row.estado or '—' }}</div>
+            <div><strong>Observaciones:</strong> {{ row.observaciones or '—' }}</div>
+            <div><strong>Última actualización:</strong> {{ row.ultima_actualizacion or '—' }}</div>
+            <div><strong>Fecha de registro:</strong> {{ row.fecha_registro or '—' }}</div>
+        {% elif tipo == 'lp_paciente' %}
+            <div><strong>Nombre completo:</strong> {{ row.nombre_completo or '—' }}</div>
+            <div><strong>Edad:</strong> {{ row.edad or '—' }}</div>
+            <div><strong>Condición:</strong> {{ row.condicion or '—' }}</div>
+            <div><strong>Hospital:</strong> {{ row.hospital or '—' }}</div>
+            <div><strong>Ciudad:</strong> {{ row.ciudad or '—' }}</div>
+            <div><strong>Estado:</strong> {{ row.estado or '—' }}</div>
+            <div><strong>Dirección:</strong> {{ row.direccion or '—' }}</div>
+            <div><strong>Fecha de ingreso:</strong> {{ row.fecha_ingreso or '—' }}</div>
+            {% if row.lat and row.lng %}
+            <div><strong>Ubicación:</strong> <a href="https://www.google.com/maps?q={{ row.lat }},{{ row.lng }}" target="_blank">Ver en mapa</a></div>
+            {% endif %}
+        {% elif tipo == 'faltante' %}
+            <div><strong>Número:</strong> {{ row.numero or '—' }}</div>
+            <div><strong>Nombre completo:</strong> {{ row.nombre_completo or '—' }}</div>
+            <div><strong>Cédula:</strong> {{ row.cedula or '—' }}</div>
+            <div><strong>Edad:</strong> {{ row.edad or '—' }}</div>
+            <div><strong>Procedencia:</strong> {{ row.procedencia or '—' }}</div>
+            <div><strong>Servicio / Sala:</strong> {{ row.servicio_sala or '—' }}</div>
+            <div><strong>Sección:</strong> {{ row.seccion or '—' }}</div>
+            <div><strong>Observaciones:</strong> {{ row.observaciones or '—' }}</div>
+            <div><strong>Fecha:</strong> {{ row.fecha or '—' }}</div>
+        {% elif tipo == 'reporta_buscando' or tipo == 'reporta_localizado' %}
+            <div><strong>ID:</strong> {{ row.id or '—' }}</div>
+            <div><strong>Nombre:</strong> {{ row.nombre or '—' }}</div>
+            <div><strong>Cédula:</strong> {{ row.cedula or '—' }}</div>
+            <div><strong>Género:</strong> {{ row.genero or '—' }}</div>
+            <div><strong>Edad:</strong> {{ row.edad or '—' }}</div>
+            <div><strong>Ciudad:</strong> {{ row.ciudad or '—' }}</div>
+            <div><strong>Zona:</strong> {{ row.zona or '—' }}</div>
+            <div><strong>Última vez:</strong> {{ row.ultima_vez or '—' }}</div>
+            <div><strong>Descripción:</strong> {{ row.descripcion or '—' }}</div>
+            <div><strong>Estado:</strong> {{ row.status or '—' }}</div>
+            <div><strong>Origen:</strong> {{ row.origen or '—' }}</div>
+            <div><strong>Verificado:</strong> {{ 'Sí' if row.verificado else 'No' }}</div>
+            {% if row.foto_url %}
+            <div><strong>Foto:</strong> <a href="{{ row.foto_url }}" target="_blank">Ver foto</a></div>
+            {% endif %}
+            {% if row.ficha_url %}
+            <div><strong>Ficha pública:</strong> <a href="{{ row.ficha_url }}" target="_blank">Abrir en venezuelareporta.org</a></div>
+            {% endif %}
+            <div><strong>Creado:</strong> {{ row.created_at or '—' }}</div>
+        {% else %}
+            <div><strong>Slug:</strong> {{ row.slug or '—' }}</div>
+            <div><strong>Nombre completo:</strong> {{ row.nombre_completo or '—' }}</div>
+            <div><strong>Dirección:</strong> {{ row.direccion or '—' }}</div>
+            <div><strong>Lugar:</strong> {{ row.lugar_nombre or '—' }}</div>
+            <div><strong>Tipo de lugar:</strong> {{ row.lugar_tipo or '—' }}</div>
+            <div><strong>Condición:</strong> {{ row.condicion or '—' }}</div>
+            <div><strong>Observaciones:</strong> {{ row.observaciones or '—' }}</div>
+            <div><strong>Fuente:</strong> {{ row.fuente_nombre or '—' }}</div>
+            <div><strong>Notas fuente:</strong> {{ row.fuente_notas or '—' }}</div>
+            <div><strong>URL fuente:</strong> {% if row.fuente_url %}<a href="{{ row.fuente_url }}" target="_blank">{{ row.fuente_url }}</a>{% else %}—{% endif %}</div>
+            <div><strong>Publicado:</strong> {{ row.publicado_en or '—' }}</div>
+        {% endif %}
+    </div>
+
+    <div class="actions">
+        <a href="/" class="btn">← Volver al directorio</a>
+    </div>
+</section>
+{% endblock %}

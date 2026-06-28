@@ -1,0 +1,45 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Variables de entorno
+.env
+.env.local
+
+# Base de datos SQLite generada automáticamente
+data/personas.db
+
+# Archivos de progreso de descargas parciales
+data/.vr_progress
+data/.lp_progress
+
+# Archivos JSON intermedios y exporte grande
+data/venezuelareporta_raw.json
+data/localizapacientes_all.json
+data/directorio.json
+
+# Logs y salidas de procesos en segundo plano
+*.log
+*.out
+*.err
+
+# MinGit portable (se descarga para inicializar el repo localmente)
+mingit/
+mingit.zip
+
+# Archivo ZIP de respaldo del repo y archivos residuales
+personasveterremoto_repo.zip
+vr_matches.txt
+
+# IDEs
+.vscode/
+.idea/
+*.swp

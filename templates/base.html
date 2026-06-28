@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Directorio de Personas{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🆘 Directorio de Personas – Sismo Venezuela</h1>
+            <p>Consulta de pacientes internados y personas reportadas como faltantes.</p>
+        </div>
+    </header>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="container">
+        <p>Base de datos local generada desde el archivo Excel proporcionado.</p>
+    </footer>
+</body>
+</html>

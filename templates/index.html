@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar personas{% endblock %}
+
+{% block content %}
+<section class="search-box">
+    <form method="get" action="/" class="search-form">
+        <div class="field">
+            <label for="q">Buscar por nombre, cédula, hospital, procedencia u observación</label>
+            <input
+                type="text"
+                id="q"
+                name="q"
+                value="{{ q }}"
+                placeholder="Ej: María González, 18142695, La Guaira..."
+                autofocus
+            >
+        </div>
+        <div class="field">
+            <label for="tipo">Tipo de registro</label>
+            <select id="tipo" name="tipo">
+                <option value="todos" {% if tipo == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="pacientes" {% if tipo == 'pacientes' %}selected{% endif %}>Pacientes internados</option>
+                <option value="faltantes" {% if tipo == 'faltantes' %}selected{% endif %}>Personas faltantes</option>
+                <option value="localizados" {% if tipo == 'localizados' %}selected{% endif %}>Personas localizadas</option>
+            </select>
+        </div>
+        <div class="field field-checkbox">
+            <label for="duplicados">
+                <input type="checkbox" id="duplicados" name="duplicados" value="1" {% if duplicados %}checked{% endif %}>
+                Incluir posibles duplicados con la lista local
+            </label>
+        </div>
+        <button type="submit" class="btn">Buscar</button>
+    </form>
+</section>
+
+<section class="results">
+    <p class="summary">
+        {% if q %}
+            Mostrando <strong>{{ rows|length }}</strong> de <strong>{{ total }}</strong> resultado(s)
+            para "<em>{{ q }}</em>".
+        {% else %}
+            Mostrando <strong>{{ rows|length }}</strong> de <strong>{{ total }}</strong> registro(s) en total.
+        {% endif %}
+    </p>
+
+    {% if rows %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo / Fuente</th>
+                        <th>Nombre</th>
+                        <th>Cédula</th>
+                        <th>Edad</th>
+                        <th>Ubicación / Procedencia</th>
+                        <th>Estado / Sección</th>
+                        <th>Observaciones</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>
+                            {% if row.tipo == 'paciente' %}
+                                <span class="badge badge-paciente">Paciente local</span>
+                            {% elif row.tipo == 'lp_paciente' %}
+                                <span class="badge badge-paciente">Paciente (Localiza Pacientes)</span>
+                            {% elif row.tipo == 'faltante' %}
+                                <span class="badge badge-faltante">Faltante local</span>
+                            {% elif row.tipo == 'reporta_buscando' %}
+                                <span class="badge badge-faltante">Buscando (Venezuela Reporta)</span>
+                            {% elif row.tipo == 'localizado' %}
+                                <span class="badge badge-localizado">Localizado (Localizados VE)</span>
+                            {% elif row.tipo == 'reporta_localizado' %}
+                                <span class="badge badge-localizado">{{ row.estado_o_seccion|title }} (Venezuela Reporta)</span>
+                            {% else %}
+                                <span class="badge">{{ row.tipo }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.nombre_completo or '—' }}</td>
+                        <td>{{ row.cedula or '—' }}</td>
+                        <td>{{ row.edad or '—' }}</td>
+                        <td>{{ row.ubicacion or '—' }}</td>
+                        <td>{{ row.estado_o_seccion or '—' }}</td>
+                        <td class="obs">{{ row.observaciones or '—' }}</td>
+                        <td>
+                            {% if row.tipo == 'paciente' %}
+                                <a href="{{ url_for('paciente_detail', persona_id=row.id) }}" class="btn-small">Ver</a>
+                            {% elif row.tipo == 'lp_paciente' %}
+                                <a href="{{ url_for('lp_paciente_detail', id=row.id) }}" class="btn-small">Ver</a>
+                            {% elif row.tipo == 'faltante' %}
+                                <a href="{{ url_for('faltante_detail', persona_id=row.id) }}" class="btn-small">Ver</a>
+                            {% elif row.tipo == 'reporta_buscando' or row.tipo == 'reporta_localizado' %}
+                                <a href="{{ url_for('reporta_detail', id=row.id) }}" class="btn-small">Ver</a>
+                            {% else %}
+                                <a href="{{ url_for('localizado_detail', persona_id=row.id) }}" class="btn-small">Ver</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <nav class="pagination" aria-label="Paginación">
+            {% if page > 1 %}
+                <a href="/?q={{ q|urlencode }}&tipo={{ tipo }}&duplicados={{ 1 if duplicados else 0 }}&page={{ page - 1 }}" class="btn-small">← Anterior</a>
+            {% else %}
+                <span class="btn-small disabled">← Anterior</span>
+            {% endif %}
+
+            <span class="page-info">Página {{ page }} de {{ total_pages }}</span>
+
+            {% if page < total_pages %}
+                <a href="/?q={{ q|urlencode }}&tipo={{ tipo }}&duplicados={{ 1 if duplicados else 0 }}&page={{ page + 1 }}" class="btn-small">Siguiente →</a>
+            {% else %}
+                <span class="btn-small disabled">Siguiente →</span>
+            {% endif %}
+        </nav>
+        {% endif %}
+    {% else %}
+        <div class="empty">
+            <p>No se encontraron resultados.</p>
+            {% if q %}
+                <p>Prueba con otras palabras o deja el campo vacío para ver todos los registros.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
