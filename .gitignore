@@ -20,6 +20,7 @@ data/personas.db
 # Archivos de progreso de descargas parciales
 data/.vr_progress
 data/.lp_progress
+data/.recalc_progress
 
 # Archivos JSON intermedios y exporte grande
 data/venezuelareporta_raw.json
