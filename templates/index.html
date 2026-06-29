@@ -76,6 +76,8 @@
                                 <span class="badge badge-localizado">Localizado (Localizados VE)</span>
                             {% elif row.tipo == 'reporta_localizado' %}
                                 <span class="badge badge-localizado">{{ row.estado_o_seccion|title }} (Venezuela Reporta)</span>
+                            {% elif row.tipo == 'warroom_found' %}
+                                <span class="badge badge-localizado">{{ row.estado_o_seccion|title }} (War Room)</span>
                             {% else %}
                                 <span class="badge">{{ row.tipo }}</span>
                             {% endif %}
@@ -95,6 +97,8 @@
                                 <a href="{{ url_for('faltante_detail', persona_id=row.id) }}" class="btn-small">Ver</a>
                             {% elif row.tipo == 'reporta_buscando' or row.tipo == 'reporta_localizado' %}
                                 <a href="{{ url_for('reporta_detail', id=row.id) }}" class="btn-small">Ver</a>
+                            {% elif row.tipo == 'warroom_found' %}
+                                <a href="{{ url_for('warroom_detail', id=row.id) }}" class="btn-small">Ver</a>
                             {% else %}
                                 <a href="{{ url_for('localizado_detail', persona_id=row.id) }}" class="btn-small">Ver</a>
                             {% endif %}

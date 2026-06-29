@@ -10,6 +10,7 @@ La aplicación importa y sincroniza:
 - **Localizados Venezuela** → Personas localizadas en hospitales/refugios (`sync_localizados.py`).
 - **Venezuela Reporta** → Registro consolidado de personas buscando, a salvo y encontradas (`sync_venezuelareporta.py`).
 - **Localiza Pacientes** → Pacientes registrados en el sistema oficial de hospitales (`sync_localizapacientes.py`).
+- **War Room** → Personas encontradas/verificadas desde la API de damnificadosterremotovenezuela (`sync_warroom.py`).
 
 Los datos se almacenan en una base de datos SQLite (`data/personas.db`) y se pueden buscar por nombre, cédula, hospital, procedencia, lugar u observaciones.
 
@@ -23,6 +24,8 @@ Los datos se almacenan en una base de datos SQLite (`data/personas.db`) y se pue
 ├── sync_venezuelareporta.py     # Sincroniza Venezuela Reporta (por lotes)
 ├── sync_localizapacientes.py    # Sincroniza Localiza Pacientes (por lotes)
 ├── load_lp_to_db.py             # Carga registros descargados de Localiza Pacientes a SQLite
+├── sync_warroom.py              # Sincroniza personas encontradas desde War Room
+├── recalc_duplicados.py         # Recalcula duplicados tras reimportar el Excel
 ├── export_json.py               # Exporta el directorio consolidado a JSON
 ├── requirements.txt             # Dependencias de Python
 ├── data/
@@ -30,7 +33,8 @@ Los datos se almacenan en una base de datos SQLite (`data/personas.db`) y se pue
 │   ├── personas.db              # Generada automáticamente
 │   ├── directorio.json          # Exportación consolidada
 │   ├── .vr_progress             # Progreso de descarga de Venezuela Reporta
-│   └── .lp_progress             # Progreso de descarga de Localiza Pacientes
+│   ├── .lp_progress             # Progreso de descarga de Localiza Pacientes
+│   └── .warroom_progress        # Progreso de descarga de War Room
 ├── static/
 │   └── style.css                # Estilos de la interfaz
 └── templates/
@@ -67,6 +71,7 @@ Los datos se almacenan en una base de datos SQLite (`data/personas.db`) y se pue
    python sync_localizados.py
    python sync_venezuelareporta.py       # repetir hasta completar
    python sync_localizapacientes.py      # repetir hasta completar
+   python sync_warroom.py                # repetir hasta completar
    ```
 
 5. Inicia la aplicación:

@@ -140,13 +140,32 @@ SOURCES = {
         "search_col": "lp.texto_busqueda",
         "duplicate_col": "lp.posible_duplicado",
     },
+    "warroom_found": {
+        "select": """
+            SELECT
+                'warroom_found' AS tipo,
+                w.id,
+                w.nombre_completo,
+                w.cedula,
+                CAST(w.edad AS TEXT) AS edad,
+                COALESCE(NULLIF(w.ubicacion_nombre, ''), w.ubicacion_direccion, '') AS ubicacion,
+                w.status AS estado_o_seccion,
+                COALESCE(NULLIF(w.relevant_info, ''), w.ubicacion_direccion, '') AS observaciones,
+                w.created_at AS fecha,
+                w.posible_duplicado,
+                w.paciente_id
+            FROM warroom_found w
+        """,
+        "search_col": "w.texto_busqueda",
+        "duplicate_col": "w.posible_duplicado",
+    },
 }
 
 TIPO_TO_KEY = {
     "todos": None,
     "pacientes": ["paciente", "lp_paciente"],
     "faltantes": ["faltante", "reporta_buscando"],
-    "localizados": ["localizado", "reporta_localizado"],
+    "localizados": ["localizado", "reporta_localizado", "warroom_found"],
 }
 
 
@@ -167,12 +186,13 @@ def get_available_source_keys():
         "localizados": "localizado",
         "reporta_personas": "reporta_buscando",
         "lp_pacientes": "lp_paciente",
+        "warroom_found": "warroom_found",
     }
     with get_db() as conn:
         cur = conn.execute(
             """
             SELECT name FROM sqlite_master
-            WHERE type='table' AND name IN ('pacientes', 'faltantes', 'localizados', 'reporta_personas', 'lp_pacientes')
+            WHERE type='table' AND name IN ('pacientes', 'faltantes', 'localizados', 'reporta_personas', 'lp_pacientes', 'warroom_found')
             """
         )
         existing = {row[0] for row in cur.fetchall()}
@@ -352,6 +372,17 @@ def lp_paciente_detail(id):
     if not row:
         return render_template("404.html"), 404
     return render_template("detail.html", row=row, tipo="lp_paciente")
+
+
+@app.route("/warroom/<id>")
+def warroom_detail(id):
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM warroom_found WHERE id = ?", (id,)
+        ).fetchone()
+    if not row:
+        return render_template("404.html"), 404
+    return render_template("detail.html", row=row, tipo="warroom_found")
 
 
 @app.route("/api/buscar")

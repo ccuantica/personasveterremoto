@@ -49,6 +49,8 @@ def export(include_duplicados=False):
                         where=None if include_duplicados else "posible_duplicado = 0")
     lp = query_all(conn, "lp_pacientes",
                    where=None if include_duplicados else "posible_duplicado = 0")
+    warroom = query_all(conn, "warroom_found",
+                        where=None if include_duplicados else "posible_duplicado = 0")
 
     total_localizados = conn.execute("SELECT COUNT(*) FROM localizados").fetchone()[0]
     duplicados_localizados = conn.execute(
@@ -63,6 +65,11 @@ def export(include_duplicados=False):
     total_lp = conn.execute("SELECT COUNT(*) FROM lp_pacientes").fetchone()[0]
     duplicados_lp = conn.execute(
         "SELECT COUNT(*) FROM lp_pacientes WHERE posible_duplicado = 1"
+    ).fetchone()[0]
+
+    total_warroom = conn.execute("SELECT COUNT(*) FROM warroom_found").fetchone()[0]
+    duplicados_warroom = conn.execute(
+        "SELECT COUNT(*) FROM warroom_found WHERE posible_duplicado = 1"
     ).fetchone()[0]
 
     conn.close()
@@ -83,7 +90,10 @@ def export(include_duplicados=False):
                 "lp_pacientes_sin_duplicados": len(lp),
                 "lp_pacientes_total": total_lp,
                 "lp_pacientes_duplicados": duplicados_lp,
-                "total_sin_duplicados": len(pacientes) + len(faltantes) + len(localizados) + len(reporta) + len(lp),
+                "warroom_sin_duplicados": len(warroom),
+                "warroom_total": total_warroom,
+                "warroom_duplicados": duplicados_warroom,
+                "total_sin_duplicados": len(pacientes) + len(faltantes) + len(localizados) + len(reporta) + len(lp) + len(warroom),
             },
         },
         "pacientes": pacientes,
@@ -91,6 +101,7 @@ def export(include_duplicados=False):
         "localizados": localizados,
         "reporta_personas": reporta,
         "lp_pacientes": lp,
+        "warroom_found": warroom,
     }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

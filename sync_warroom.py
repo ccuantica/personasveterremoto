@@ -3,12 +3,15 @@
 Sincroniza personas encontradas/hospitalizadas desde la API de
 Terremoto Venezuela War Room (https://api.damnificadosterremotovenezuela.com).
 
+Descarga por páginas y guarda progreso para poder reanudar.
+
 Uso:
     python sync_warroom.py
     python sync_warroom.py --force
 """
 import argparse
 import difflib
+import json
 import re
 import sqlite3
 import time
@@ -16,7 +19,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-import json
+from pathlib import Path
 
 from import_data import DB_PATH, normalize_text, safe_str, clean_cedula
 
@@ -25,6 +28,7 @@ USER_AGENT = "Mozilla/5.0 (DirectorioPersonasSismoVenezuela/1.0; +https://localh
 PAGE_SIZE = 100
 MAX_RETRIES = 3
 REQUEST_DELAY = 0.5
+PROGRESS_FILE = Path(__file__).resolve().parent / "data" / ".warroom_progress"
 
 STOPWORDS = {
     "de", "del", "la", "los", "las", "y", "e", "o", "u",
@@ -130,10 +134,12 @@ def load_pacientes_for_matching(conn):
 
 def find_best_duplicate(item, pacientes, name_index, exact_names, cedula_index):
     name = normalize_for_match(item.get("full_name"))
+    ubicacion = item.get("ubicacion") or {}
+    instalacion = ubicacion.get("instalacion") or {}
     place = normalize_for_match(
         " ".join(filter(None, [
-            item.get("ubicacion", {}).get("instalacion", {}).get("nombre", ""),
-            item.get("ubicacion", {}).get("instalacion", {}).get("direccion", ""),
+            instalacion.get("nombre", ""),
+            instalacion.get("direccion", ""),
             item.get("lugar_procedencia") or "",
         ]))
     )
@@ -204,41 +210,67 @@ def create_table(conn):
     conn.commit()
 
 
-def fetch_all():
-    all_items = []
-    page = 1
-    total_pages = None
-    print("Descargando registros de War Room API...")
-    while True:
-        data = api_get("/found-people", {"page": page, "page_size": PAGE_SIZE})
-        items = data.get("data", [])
-        pagination = data.get("pagination", {})
-        if total_pages is None:
-            total_pages = pagination.get("total_pages", 1)
-        if not items:
-            break
-        all_items.extend(items)
-        print(f"  página {page}/{total_pages}: +{len(items)} (total {len(all_items)})")
-        if page >= total_pages:
-            break
-        page += 1
-        time.sleep(REQUEST_DELAY)
-    print(f"Total descargado: {len(all_items)}")
-    return all_items
+def load_progress():
+    if PROGRESS_FILE.exists():
+        try:
+            return json.loads(PROGRESS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"page": 1, "total_pages": None, "inserted": 0}
+
+
+def save_progress(progress):
+    PROGRESS_FILE.write_text(json.dumps(progress), encoding="utf-8")
+
+
+def row_from_item(item, pacientes, name_index, exact_names, cedula_index):
+    nombre = safe_str(item.get("full_name"))
+    cedula = safe_str(item.get("document_id"))
+    ubicacion = item.get("ubicacion") or {}
+    instalacion = ubicacion.get("instalacion") or {}
+    paciente_id, score = find_best_duplicate(item, pacientes, name_index, exact_names, cedula_index)
+    posible_duplicado = 1 if paciente_id else 0
+
+    texto_busqueda = " ".join([
+        normalize_text(nombre),
+        normalize_text(cedula),
+        clean_cedula(cedula),
+        normalize_text(item.get("status")),
+        normalize_text(instalacion.get("nombre")),
+        normalize_text(instalacion.get("direccion")),
+        normalize_text(item.get("lugar_procedencia")),
+        normalize_text(item.get("relevant_info")),
+    ]).strip()
+
+    return (
+        safe_str(item.get("id")),
+        nombre,
+        cedula,
+        item.get("age") if item.get("age") is not None else None,
+        safe_str(instalacion.get("nombre")),
+        safe_str(instalacion.get("tipo")),
+        safe_str(instalacion.get("direccion")),
+        instalacion.get("lat") if instalacion.get("lat") is not None else None,
+        instalacion.get("lon") if instalacion.get("lon") is not None else None,
+        safe_str(item.get("lugar_procedencia")),
+        safe_str(item.get("relevant_info")),
+        1 if item.get("fallecido") else 0,
+        safe_str(item.get("source_url")),
+        safe_str(item.get("status")),
+        safe_str(item.get("created_at")),
+        safe_str(item.get("updated_at")),
+        posible_duplicado,
+        paciente_id,
+        score,
+        texto_busqueda,
+    )
 
 
 def sync(force=False):
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    if not force and DB_PATH.exists():
-        with sqlite3.connect(DB_PATH) as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='warroom_found'"
-            )
-            if cur.fetchone():
-                print("La tabla warroom_found ya existe. Usa --force para resincronizar.")
-                return
+    if force:
+        PROGRESS_FILE.unlink(missing_ok=True)
 
     with sqlite3.connect(DB_PATH) as conn_check:
         cur = conn_check.execute(
@@ -248,82 +280,62 @@ def sync(force=False):
             print("No existe la tabla 'pacientes'. Ejecuta primero: python import_data.py")
             return
 
-    items = fetch_all()
-    if not items:
-        print("No se obtuvieron datos de War Room API.")
-        return
+    progress = load_progress()
+    start_page = progress.get("page", 1)
+
+    # Primera petición para conocer totales
+    first = api_get("/found-people", {"page": start_page, "page_size": PAGE_SIZE})
+    pagination = first.get("pagination", {})
+    total_pages = pagination.get("total_pages", 1)
+    progress["total_pages"] = total_pages
+    save_progress(progress)
 
     with sqlite3.connect(DB_PATH) as conn:
-        create_table(conn)
-        pacientes, name_index, exact_names, cedula_index = load_pacientes_for_matching(conn)
-        print(f"Comparando {len(items)} registros contra {len(pacientes)} pacientes locales...")
-
-        rows = []
-        duplicados = 0
-        for idx, item in enumerate(items, 1):
-            nombre = safe_str(item.get("full_name"))
-            cedula = safe_str(item.get("document_id"))
-            ubicacion = item.get("ubicacion") or {}
-            instalacion = ubicacion.get("instalacion") or {}
-            paciente_id, score = find_best_duplicate(item, pacientes, name_index, exact_names, cedula_index)
-            posible_duplicado = 1 if paciente_id else 0
-            if posible_duplicado:
-                duplicados += 1
-
-            texto_busqueda = " ".join([
-                normalize_text(nombre),
-                normalize_text(cedula),
-                clean_cedula(cedula),
-                normalize_text(item.get("status")),
-                normalize_text(instalacion.get("nombre")),
-                normalize_text(instalacion.get("direccion")),
-                normalize_text(item.get("lugar_procedencia")),
-                normalize_text(item.get("relevant_info")),
-            ]).strip()
-
-            rows.append((
-                safe_str(item.get("id")),
-                nombre,
-                cedula,
-                item.get("age") if item.get("age") is not None else None,
-                safe_str(instalacion.get("nombre")),
-                safe_str(instalacion.get("tipo")),
-                safe_str(instalacion.get("direccion")),
-                instalacion.get("lat") if instalacion.get("lat") is not None else None,
-                instalacion.get("lon") if instalacion.get("lon") is not None else None,
-                safe_str(item.get("lugar_procedencia")),
-                safe_str(item.get("relevant_info")),
-                1 if item.get("fallecido") else 0,
-                safe_str(item.get("source_url")),
-                safe_str(item.get("status")),
-                safe_str(item.get("created_at")),
-                safe_str(item.get("updated_at")),
-                posible_duplicado,
-                paciente_id,
-                score,
-                texto_busqueda,
-            ))
-
-            if idx % 1000 == 0:
-                print(f"  Procesados {idx}/{len(items)} ({duplicados} duplicados)")
-
-        conn.executemany(
-            """
-            INSERT INTO warroom_found
-            (id, nombre_completo, cedula, edad, ubicacion_nombre, ubicacion_tipo,
-             ubicacion_direccion, lat, lng, lugar_procedencia, relevant_info,
-             fallecido, source_url, status, created_at, updated_at,
-             posible_duplicado, paciente_id, score_duplicado, texto_busqueda)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            rows,
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='warroom_found'"
         )
-        conn.commit()
+        if not cur.fetchone():
+            create_table(conn)
+        elif force and start_page == 1:
+            create_table(conn)
 
-    print(
-        f"Sincronización completa: {len(rows)} registros guardados "
-        f"({duplicados} posibles duplicados con pacientes locales)."
-    )
+        pacientes, name_index, exact_names, cedula_index = load_pacientes_for_matching(conn)
+        print(f"Comparando contra {len(pacientes)} pacientes locales...")
+
+        page = start_page
+        inserted_total = progress.get("inserted", 0)
+        while page <= total_pages:
+            if page > start_page:
+                data = api_get("/found-people", {"page": page, "page_size": PAGE_SIZE})
+            else:
+                data = first
+            items = data.get("data", [])
+            if not items:
+                break
+
+            rows = [row_from_item(item, pacientes, name_index, exact_names, cedula_index) for item in items]
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO warroom_found
+                (id, nombre_completo, cedula, edad, ubicacion_nombre, ubicacion_tipo,
+                 ubicacion_direccion, lat, lng, lugar_procedencia, relevant_info,
+                 fallecido, source_url, status, created_at, updated_at,
+                 posible_duplicado, paciente_id, score_duplicado, texto_busqueda)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+            conn.commit()
+            inserted_total += len(rows)
+            progress["page"] = page + 1
+            progress["inserted"] = inserted_total
+            save_progress(progress)
+            print(f"  página {page}/{total_pages}: +{len(rows)} (total {inserted_total})")
+            page += 1
+            if page <= total_pages:
+                time.sleep(REQUEST_DELAY)
+
+    print(f"Sincronización completa: {inserted_total} registros guardados.")
 
 
 if __name__ == "__main__":
@@ -333,7 +345,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Fuerza la resincronización aunque la tabla ya exista.",
+        help="Fuerza la resincronización desde cero.",
     )
     args = parser.parse_args()
     sync(force=args.force)

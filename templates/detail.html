@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="detail-card">
-    {% if (tipo == 'localizado' or tipo.startswith('reporta_') or tipo == 'lp_paciente') and row.posible_duplicado %}
+    {% if (tipo == 'localizado' or tipo.startswith('reporta_') or tipo == 'lp_paciente' or tipo == 'warroom_found') and row.posible_duplicado %}
     <div class="alert">
         ⚠️ Este registro de una fuente externa coincide probablemente con un paciente ya registrado en la lista local.
         <a href="{{ url_for('paciente_detail', persona_id=row.paciente_id) }}">Ver paciente local</a>
@@ -22,6 +22,8 @@
             <span class="badge badge-faltante">Buscando (Venezuela Reporta)</span>
         {% elif tipo == 'reporta_localizado' %}
             <span class="badge badge-localizado">{{ row.status|title }} (Venezuela Reporta)</span>
+        {% elif tipo == 'warroom_found' %}
+            <span class="badge badge-localizado">{{ row.status|title }} (War Room)</span>
         {% else %}
             <span class="badge badge-localizado">Persona localizada</span>
         {% endif %}
@@ -81,6 +83,26 @@
             <div><strong>Ficha pública:</strong> <a href="{{ row.ficha_url }}" target="_blank">Abrir en venezuelareporta.org</a></div>
             {% endif %}
             <div><strong>Creado:</strong> {{ row.created_at or '—' }}</div>
+        {% elif tipo == 'warroom_found' %}
+            <div><strong>ID:</strong> {{ row.id or '—' }}</div>
+            <div><strong>Nombre completo:</strong> {{ row.nombre_completo or '—' }}</div>
+            <div><strong>Cédula:</strong> {{ row.cedula or '—' }}</div>
+            <div><strong>Edad:</strong> {{ row.edad or '—' }}</div>
+            <div><strong>Ubicación:</strong> {{ row.ubicacion_nombre or '—' }}</div>
+            <div><strong>Tipo de ubicación:</strong> {{ row.ubicacion_tipo or '—' }}</div>
+            <div><strong>Dirección:</strong> {{ row.ubicacion_direccion or '—' }}</div>
+            <div><strong>Lugar de procedencia:</strong> {{ row.lugar_procedencia or '—' }}</div>
+            <div><strong>Información relevante:</strong> {{ row.relevant_info or '—' }}</div>
+            <div><strong>Estado:</strong> {{ row.status or '—' }}</div>
+            <div><strong>Fallecido:</strong> {{ 'Sí' if row.fallecido else 'No' }}</div>
+            {% if row.lat and row.lng %}
+            <div><strong>Ubicación GPS:</strong> <a href="https://www.google.com/maps?q={{ row.lat }},{{ row.lng }}" target="_blank">Ver en mapa</a></div>
+            {% endif %}
+            {% if row.source_url %}
+            <div><strong>Ficha pública:</strong> <a href="{{ row.source_url }}" target="_blank">Abrir en War Room</a></div>
+            {% endif %}
+            <div><strong>Creado:</strong> {{ row.created_at or '—' }}</div>
+            <div><strong>Actualizado:</strong> {{ row.updated_at or '—' }}</div>
         {% else %}
             <div><strong>Slug:</strong> {{ row.slug or '—' }}</div>
             <div><strong>Nombre completo:</strong> {{ row.nombre_completo or '—' }}</div>

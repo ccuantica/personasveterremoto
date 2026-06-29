@@ -25,6 +25,7 @@ SHEETS = [
     ("Localizados", "localizados"),
     ("Venezuela Reporta", "reporta_personas"),
     ("Localiza Pacientes", "lp_pacientes"),
+    ("War Room", "warroom_found"),
 ]
 
 
@@ -52,6 +53,9 @@ def json_to_excel(include_duplicados=False):
             ("Venezuela Reporta (total)", "reporta_total"),
             ("Venezuela Reporta (duplicados)", "reporta_duplicados"),
             ("Localiza Pacientes", "lp_pacientes_total"),
+            ("War Room (sin duplicados)", "warroom_sin_duplicados"),
+            ("War Room (total)", "warroom_total"),
+            ("War Room (duplicados)", "warroom_duplicados"),
             ("Total sin duplicados", "total_sin_duplicados"),
         ]:
             resumen.append({"Concepto": label, "Cantidad": totales.get(key, 0)})

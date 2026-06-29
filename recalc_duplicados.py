@@ -228,6 +228,8 @@ def main(force=False):
         tables = [
             ("reporta_personas", "nombre", ["ciudad", "zona"], "cedula"),
             ("lp_pacientes", "nombre_completo", ["hospital", "ciudad", "estado"], None),
+            ("localizados", "nombre_completo", ["lugar_nombre", "direccion", "condicion"], None),
+            ("warroom_found", "nombre_completo", ["ubicacion_nombre", "ubicacion_direccion", "lugar_procedencia"], "cedula"),
         ]
         for table, name_field, place_fields, ced_field in tables:
             cur = conn.execute(
